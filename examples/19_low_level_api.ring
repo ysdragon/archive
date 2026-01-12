@@ -1,5 +1,11 @@
 load "archive.ring"
 
+# Create a test archive first
+write("api_test1.txt", "API test content 1")
+write("api_test2.txt", "API test content 2")
+archive_create("test_archive.tar.gz", ["api_test1.txt", "api_test2.txt"], 
+               ARCHIVE_FORMAT_TAR, ARCHIVE_COMPRESSION_GZIP)
+
 # Part 1: Low-level C API usage
 ? "=== Low-level C API ==="
 pRead = archive_read_new()
@@ -41,6 +47,11 @@ end
 
 reader.close()
 reader.free()
+
+# Cleanup
+remove("api_test1.txt")
+remove("api_test2.txt")
+remove("test_archive.tar.gz")
 
 ? ""
 ? "Done"

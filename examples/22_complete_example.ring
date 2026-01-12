@@ -71,8 +71,8 @@ for aItem in aRestored
 next
 
 # Cleanup
-remove("backup_test")
-remove("restored")
+OSDeleteFolder("backup_test")
+OSDeleteFolder("restored")
 remove("backup.zip")
 
 ? ""

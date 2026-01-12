@@ -9,3 +9,7 @@ writer.close()
 writer.free()
 
 ? "Created from_disk.tar.gz with realfile.txt inside"
+
+# Cleanup
+remove("realfile.txt")
+remove("from_disk.tar.gz")

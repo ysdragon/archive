@@ -10,3 +10,6 @@ writer.close()
 writer.free()
 
 ? "Created encrypted.zip with password: " + cPassword
+
+# Cleanup
+remove("encrypted.zip")

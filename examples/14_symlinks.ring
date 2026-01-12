@@ -10,3 +10,6 @@ writer.close()
 writer.free()
 
 ? "Created with_symlink.tar.gz"
+
+# Cleanup
+remove("with_symlink.tar.gz")

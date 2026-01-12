@@ -51,6 +51,7 @@ next
 remove("doc1.txt")
 remove("doc2.txt")
 remove("doc3.txt")
+remove("documents.tar.gz")
 OSDeleteFolder("extracted")
 
 ? ""

@@ -49,3 +49,9 @@ writer.free()
 ? ""
 ? "Note: AES encrypted files require 7z or WinZip to extract."
 ? "      ZipCrypt files work with standard unzip command."
+
+# Cleanup
+remove("encrypted_aes256.zip")
+remove("encrypted_aes128.zip")
+remove("encrypted_zipcrypt.zip")
+remove("encrypted_manual.zip")

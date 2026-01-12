@@ -29,6 +29,12 @@ reader.free()
 
 ? ""
 ? "=== Test 3: Format detection info (OOP) ==="
+
+# Create a test archive for this test
+write("error_test.txt", "Error handling test")
+archive_create("test_archive.tar.gz", ["error_test.txt"], 
+               ARCHIVE_FORMAT_TAR, ARCHIVE_COMPRESSION_GZIP)
+
 reader = new ArchiveReader("test_archive.tar.gz")
 reader.nextEntry()
 
@@ -37,6 +43,10 @@ reader.nextEntry()
 
 reader.close()
 reader.free()
+
+# Cleanup
+remove("error_test.txt")
+remove("test_archive.tar.gz")
 
 ? ""
 ? "Done"

@@ -31,6 +31,10 @@ next
 
 # Cleanup
 remove("sample.txt")
+remove("test.tar.bz2")
+remove("test.tar.lz4")
+remove("test.tar.lzma")
+remove("test.cpio.gz")
 
 ? ""
 ? "Done"

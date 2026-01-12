@@ -12,3 +12,6 @@ writer.close()
 writer.free()
 
 ? "Created myarchive.tar.gz"
+
+# Cleanup
+remove("myarchive.tar.gz")
