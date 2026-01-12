@@ -1,0 +1,32 @@
+/* archive.rh - Ring Archive Constants */
+
+ARCHIVE_FORMAT_TAR      = get_archive_format_tar()
+ARCHIVE_FORMAT_ZIP      = get_archive_format_zip()
+ARCHIVE_FORMAT_7ZIP     = get_archive_format_7zip()
+ARCHIVE_FORMAT_RAR      = get_archive_format_rar()
+ARCHIVE_FORMAT_CPIO     = get_archive_format_cpio()
+ARCHIVE_FORMAT_ISO9660  = get_archive_format_iso9660()
+ARCHIVE_FORMAT_RAW      = get_archive_format_raw()
+
+ARCHIVE_COMPRESSION_NONE   = get_archive_compression_none()
+ARCHIVE_COMPRESSION_GZIP   = get_archive_compression_gzip()
+ARCHIVE_COMPRESSION_BZIP2  = get_archive_compression_bzip2()
+ARCHIVE_COMPRESSION_XZ     = get_archive_compression_xz()
+ARCHIVE_COMPRESSION_LZMA   = get_archive_compression_lzma()
+ARCHIVE_COMPRESSION_ZSTD   = get_archive_compression_zstd()
+ARCHIVE_COMPRESSION_LZ4    = get_archive_compression_lz4()
+
+ARCHIVE_ENTRY_FILE    = get_archive_entry_file()
+ARCHIVE_ENTRY_DIR     = get_archive_entry_dir()
+ARCHIVE_ENTRY_SYMLINK = get_archive_entry_symlink()
+
+ARCHIVE_OK     = get_archive_ok()
+ARCHIVE_EOF    = get_archive_eof()
+ARCHIVE_RETRY  = get_archive_retry()
+ARCHIVE_WARN   = get_archive_warn()
+ARCHIVE_FAILED = get_archive_failed()
+ARCHIVE_FATAL  = get_archive_fatal()
+
+ARCHIVE_ENCRYPTION_AES256   = "aes256"
+ARCHIVE_ENCRYPTION_AES128   = "aes128"
+ARCHIVE_ENCRYPTION_ZIPCRYPT = "zipcrypt"

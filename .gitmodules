@@ -1,0 +1,24 @@
+[submodule "src/c_src/libarchive"]
+	path = src/c_src/libarchive
+	url = https://github.com/libarchive/libarchive.git
+[submodule "src/c_src/zstd"]
+	path = src/c_src/zstd
+	url = https://github.com/facebook/zstd.git
+[submodule "src/c_src/zlib"]
+	path = src/c_src/zlib
+	url = https://github.com/madler/zlib.git
+[submodule "src/c_src/xz"]
+	path = src/c_src/xz
+	url = https://github.com/tukaani-project/xz.git
+[submodule "src/c_src/lz4"]
+	path = src/c_src/lz4
+	url = https://github.com/lz4/lz4.git
+[submodule "src/c_src/bzip2"]
+	path = src/c_src/bzip2
+	url = https://gitlab.com/bzip2/bzip2
+[submodule "src/c_src/brotli"]
+	path = src/c_src/brotli
+	url = https://github.com/google/brotli.git
+[submodule "src/c_src/mbedtls"]
+	path = src/c_src/mbedtls
+	url = https://github.com/Mbed-TLS/mbedtls.git
