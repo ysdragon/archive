@@ -318,7 +318,6 @@ RING_FUNC(ring_archive_read_data)
 	size_t size = (size_t)RING_API_GETNUMBER(2);
 	if (size == 0)
 	{
-		RING_API_RETSTRING("");
 		return;
 	}
 
@@ -334,7 +333,6 @@ RING_FUNC(ring_archive_read_data)
 	if (bytes_read < 0)
 	{
 		ring_state_free(pVM->pRingState, buffer);
-		RING_API_RETSTRING("");
 		return;
 	}
 
@@ -381,10 +379,6 @@ RING_FUNC(ring_archive_read_data_block)
 		ring_list_adddouble_gc(pVM->pRingState, pResultList, (double)offset);
 		ring_list_adddouble_gc(pVM->pRingState, pResultList, (double)size);
 		RING_API_RETLIST(pResultList);
-	}
-	else
-	{
-		RING_API_RETCPOINTER(NULL, "null");
 	}
 }
 
@@ -1314,7 +1308,7 @@ RING_FUNC(ring_archive_entry_pathname)
 	}
 
 	const char *pathname = archive_entry_pathname(entry);
-	RING_API_RETSTRING(pathname ? pathname : "");
+	RING_API_RETSTRING(pathname);
 }
 
 /*
@@ -1650,7 +1644,7 @@ RING_FUNC(ring_archive_entry_symlink)
 	}
 
 	const char *symlink = archive_entry_symlink(entry);
-	RING_API_RETSTRING(symlink ? symlink : "");
+	RING_API_RETSTRING(symlink);
 }
 
 /*
@@ -1803,12 +1797,11 @@ RING_FUNC(ring_archive_error_string)
 	}
 	if (!a)
 	{
-		RING_API_RETSTRING("");
 		return;
 	}
 
 	const char *err = archive_error_string(a);
-	RING_API_RETSTRING(err ? err : "");
+	RING_API_RETSTRING(err);
 }
 
 /*
@@ -1878,12 +1871,11 @@ RING_FUNC(ring_archive_format_name)
 	}
 	if (!a)
 	{
-		RING_API_RETSTRING("");
 		return;
 	}
 
 	const char *name = archive_format_name(a);
-	RING_API_RETSTRING(name ? name : "");
+	RING_API_RETSTRING(name);
 }
 
 /*
@@ -1916,12 +1908,11 @@ RING_FUNC(ring_archive_filter_name)
 	}
 	if (!a)
 	{
-		RING_API_RETSTRING("");
 		return;
 	}
 
 	const char *name = archive_filter_name(a, (int)RING_API_GETNUMBER(2));
-	RING_API_RETSTRING(name ? name : "");
+	RING_API_RETSTRING(name);
 }
 
 /* ============================================================================
@@ -2199,6 +2190,41 @@ RING_FUNC(ring_archive_create)
 }
 
 /*
+ * archive_read_add_passphrase(pArchive, cPassphrase) -> nResult
+ *
+ * Add a passphrase for reading encrypted archives.
+ */
+RING_FUNC(ring_archive_read_add_passphrase)
+{
+	if (RING_API_PARACOUNT != 2)
+	{
+		RING_API_ERROR(RING_API_MISS2PARA);
+		return;
+	}
+	if (!RING_API_ISCPOINTER(1))
+	{
+		RING_API_ERROR(RING_API_NOTPOINTER);
+		return;
+	}
+	if (!RING_API_ISSTRING(2))
+	{
+		RING_API_ERROR(RING_API_BADPARATYPE);
+		return;
+	}
+
+	struct archive *a = (struct archive *)RING_API_GETCPOINTER(1, "archive_read");
+	if (!a)
+	{
+		RING_API_ERROR(RING_API_NULLPOINTER);
+		return;
+	}
+
+	const char *passphrase = RING_API_GETSTRING(2);
+	int result = archive_read_add_passphrase(a, passphrase);
+	RING_API_RETNUMBER((double)result);
+}
+
+/*
  * archive_read_file(cArchivePath, cEntryPath) -> cData
  *
  * Read a single file from an archive.
@@ -2228,7 +2254,6 @@ RING_FUNC(ring_archive_read_file)
 	if (archive_read_open_filename(a, archive_path, 10240) != ARCHIVE_OK)
 	{
 		archive_read_free(a);
-		RING_API_RETSTRING("");
 		return;
 	}
 
@@ -2259,10 +2284,6 @@ RING_FUNC(ring_archive_read_file)
 	{
 		RING_API_RETSTRING2(result_data, result_size);
 		ring_state_free(pVM->pRingState, result_data);
-	}
-	else
-	{
-		RING_API_RETSTRING("");
 	}
 }
 
@@ -2443,6 +2464,7 @@ RING_LIBINIT
 	RING_API_REGISTER("archive_list", ring_archive_list);
 	RING_API_REGISTER("archive_create", ring_archive_create);
 	RING_API_REGISTER("archive_read_file", ring_archive_read_file);
+	RING_API_REGISTER("archive_read_add_passphrase", ring_archive_read_add_passphrase);
 
 	/* Format Constants */
 	RING_API_REGISTER("get_archive_format_tar", ring_get_archive_format_tar);
