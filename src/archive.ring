@@ -283,14 +283,17 @@ class ArchiveEntry
 	pEntry = NULL
 	lOwned = true
 
-	func init pExisting
-		if pExisting != NULL
-			pEntry = pExisting
-			lOwned = false
-		else
-			pEntry = archive_entry_new()
-			lOwned = true
+	func init
+		pEntry = archive_entry_new()
+		lOwned = true
+
+	func wrap pExisting
+		if not isNull(pEntry) and lOwned
+			archive_entry_free(pEntry)
 		ok
+		pEntry = pExisting
+		lOwned = false
+		return self
 
 	func clear
 		if not isNull(pEntry)
@@ -300,7 +303,9 @@ class ArchiveEntry
 
 	func clone
 		if not isNull(pEntry)
-			return new ArchiveEntry(archive_entry_clone(pEntry))
+			oEntry = new ArchiveEntry()
+			oEntry.wrap(archive_entry_clone(pEntry))
+			return oEntry
 		ok
 		return NULL
 

@@ -120,6 +120,7 @@ writer.free()
 ```ring
 load "archive.ring"
 
+# Writing encrypted archive
 writer = new ArchiveWriter(ARCHIVE_FORMAT_ZIP, ARCHIVE_COMPRESSION_NONE)
 writer.setPassphrase("secretpassword")
 writer.setEncryption(ARCHIVE_ENCRYPTION_AES256)  # or AES128, ZIPCRYPT
@@ -127,6 +128,16 @@ writer.open("secure.zip")
 writer.addFile("secret.txt", "Confidential data")
 writer.close()
 writer.free()
+
+# Reading encrypted archive
+reader = new ArchiveReader(NULL)
+reader.addPassphrase("secretpassword")
+reader.open("secure.zip")
+while reader.nextEntry()
+    ? reader.entryPath() + ": " + reader.readAll()
+end
+reader.close()
+reader.free()
 ```
 
 ### Archive Helper Class
@@ -197,6 +208,7 @@ archive.create("new.zip", ["file1.txt", "file2.txt"],
 ```ring
 reader = new ArchiveReader(cFilename)
 reader.open(cFilename)              # Open archive
+reader.addPassphrase(cPassword)     # Add passphrase for encrypted archives (call before open)
 reader.openMemory(cData)            # Open from memory
 reader.nextEntry()                  # Move to next entry (returns true/false)
 reader.entry()                      # Get current entry pointer
@@ -242,7 +254,7 @@ writer.filterName()                 # Get filter/compression name
 #### ArchiveEntry Class
 
 ```ring
-entry = new ArchiveEntry(NULL)
+entry = new ArchiveEntry()
 entry.setPathname(cPath)            # Set path
 entry.setSize(nSize)                # Set size
 entry.setFiletype(nType)            # Set type (FILE, DIR, SYMLINK)

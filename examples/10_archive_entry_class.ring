@@ -3,7 +3,7 @@ load "archive.ring"
 # Example: Using ArchiveEntry class directly
 
 # Create entry from scratch
-entry = new ArchiveEntry(NULL)
+entry = new ArchiveEntry()
 entry.setPathname("myfile.txt")
 entry.setSize(100)
 entry.setFiletype(ARCHIVE_ENTRY_FILE)
@@ -18,7 +18,7 @@ entry.setMtime(clock())
 ? ""
 
 # Create directory entry
-dirEntry = new ArchiveEntry(NULL)
+dirEntry = new ArchiveEntry()
 dirEntry.setPathname("mydir/")
 dirEntry.setFiletype(ARCHIVE_ENTRY_DIR)
 dirEntry.setPerm(0755)
@@ -29,7 +29,7 @@ dirEntry.setPerm(0755)
 ? ""
 
 # Create symlink entry
-linkEntry = new ArchiveEntry(NULL)
+linkEntry = new ArchiveEntry()
 linkEntry.setPathname("mylink")
 linkEntry.setFiletype(ARCHIVE_ENTRY_SYMLINK)
 linkEntry.setSymlink("target.txt")
