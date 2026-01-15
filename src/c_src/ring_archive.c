@@ -15,6 +15,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#ifdef _WIN32
+#include <io.h>
+#define open _open
+#define read _read
+#define close _close
+#define O_RDONLY _O_RDONLY
+#else
+#include <unistd.h>
+#endif
 
 /* Define mode_t and S_IS* macros for Windows */
 #ifdef _WIN32
@@ -437,36 +448,6 @@ RING_FUNC(ring_archive_read_close)
 	}
 
 	int result = archive_read_close(a);
-	RING_API_RETNUMBER((double)result);
-}
-
-/*
- * archive_read_free(pArchive) -> nResult
- *
- * Free archive reader resources.
- */
-RING_FUNC(ring_archive_read_free)
-{
-	if (RING_API_PARACOUNT != 1)
-	{
-		RING_API_ERROR(RING_API_MISS1PARA);
-		return;
-	}
-	if (!RING_API_ISCPOINTER(1))
-	{
-		RING_API_ERROR(RING_API_NOTPOINTER);
-		return;
-	}
-
-	struct archive *a = (struct archive *)RING_API_GETCPOINTER(1, "archive_read");
-	if (!a)
-	{
-		RING_API_ERROR(RING_API_NULLPOINTER);
-		return;
-	}
-
-	int result = archive_read_free(a);
-	RING_API_SETNULLPOINTER(1);
 	RING_API_RETNUMBER((double)result);
 }
 
@@ -902,10 +883,11 @@ RING_FUNC(ring_archive_write_open_filename)
 }
 
 /*
- * archive_write_open_memory(pArchive) -> aResult [pBuffer, pUsed]
+ * archive_write_open_memory(pArchive) -> aMemBuffer [pBuffer, pUsed]
  *
  * Open memory buffer for writing archive.
- * Returns list with buffer pointer and used size pointer.
+ * Returns list with buffer and used pointers.
+ * Call archive_memory_get_data() to get data, then archive_memory_free() to free.
  */
 RING_FUNC(ring_archive_write_open_memory)
 {
@@ -929,8 +911,7 @@ RING_FUNC(ring_archive_write_open_memory)
 
 	VM *pVM = (VM *)pPointer;
 
-	/* Allocate buffer and size tracker */
-	size_t buffer_size = 1024 * 1024; /* 1MB initial */
+	size_t buffer_size = 1024 * 1024; /* 1MB */
 	void *buffer = ring_state_malloc(pVM->pRingState, buffer_size);
 	size_t *used = (size_t *)ring_state_malloc(pVM->pRingState, sizeof(size_t));
 	*used = 0;
@@ -945,10 +926,97 @@ RING_FUNC(ring_archive_write_open_memory)
 		return;
 	}
 
-	List *pResultList = RING_API_NEWLIST;
-	ring_list_addcpointer_gc(pVM->pRingState, pResultList, buffer, "buffer");
-	ring_list_addcpointer_gc(pVM->pRingState, pResultList, used, "size_ptr");
-	RING_API_RETLIST(pResultList);
+	List *pList = RING_API_NEWLIST;
+	ring_list_addcpointer_gc(pVM->pRingState, pList, buffer, "buffer");
+	ring_list_addcpointer_gc(pVM->pRingState, pList, used, "size_ptr");
+	RING_API_RETLIST(pList);
+}
+
+/*
+ * archive_memory_get_data(aMemBuffer) -> cData
+ *
+ * Get archive data from memory buffer as a string.
+ */
+RING_FUNC(ring_archive_memory_get_data)
+{
+	if (RING_API_PARACOUNT != 1)
+	{
+		RING_API_ERROR(RING_API_MISS1PARA);
+		return;
+	}
+	if (!RING_API_ISLIST(1))
+	{
+		RING_API_ERROR(RING_API_BADPARATYPE);
+		return;
+	}
+
+	List *pList = RING_API_GETLIST(1);
+	if (ring_list_getsize(pList) != 2)
+	{
+		RING_API_ERROR("Invalid memory buffer list");
+		return;
+	}
+
+	/* Get buffer pointer from first sublist */
+	List *pBufferList = ring_list_getlist(pList, 1);
+	void *buffer = ring_list_getpointer(pBufferList, RING_CPOINTER_POINTER);
+
+	/* Get used pointer from second sublist */
+	List *pUsedList = ring_list_getlist(pList, 2);
+	size_t *used = (size_t *)ring_list_getpointer(pUsedList, RING_CPOINTER_POINTER);
+
+	if (!buffer || !used)
+	{
+		RING_API_ERROR(RING_API_NULLPOINTER);
+		return;
+	}
+
+	RING_API_RETSTRING2((const char *)buffer, *used);
+}
+
+/*
+ * archive_memory_free(aMemBuffer)
+ *
+ * Free memory buffer created by archive_write_open_memory().
+ */
+RING_FUNC(ring_archive_memory_free)
+{
+	if (RING_API_PARACOUNT != 1)
+	{
+		RING_API_ERROR(RING_API_MISS1PARA);
+		return;
+	}
+	if (!RING_API_ISLIST(1))
+	{
+		RING_API_ERROR(RING_API_BADPARATYPE);
+		return;
+	}
+
+	VM *pVM = (VM *)pPointer;
+	List *pList = RING_API_GETLIST(1);
+
+	if (ring_list_getsize(pList) != 2)
+	{
+		RING_API_ERROR("Invalid memory buffer list");
+		return;
+	}
+
+	/* Get buffer pointer from first sublist */
+	List *pBufferList = ring_list_getlist(pList, 1);
+	void *buffer = ring_list_getpointer(pBufferList, RING_CPOINTER_POINTER);
+
+	/* Get used pointer from second sublist */
+	List *pUsedList = ring_list_getlist(pList, 2);
+	size_t *used = (size_t *)ring_list_getpointer(pUsedList, RING_CPOINTER_POINTER);
+
+	if (buffer)
+	{
+		ring_state_free(pVM->pRingState, buffer);
+	}
+	if (used)
+	{
+		ring_state_free(pVM->pRingState, used);
+	}
 }
 
 /*
@@ -1079,36 +1147,6 @@ RING_FUNC(ring_archive_write_close)
 	}
 
 	int result = archive_write_close(a);
-	RING_API_RETNUMBER((double)result);
-}
-
-/*
- * archive_write_free(pArchive) -> nResult
- *
- * Free archive writer resources.
- */
-RING_FUNC(ring_archive_write_free)
-{
-	if (RING_API_PARACOUNT != 1)
-	{
-		RING_API_ERROR(RING_API_MISS1PARA);
-		return;
-	}
-	if (!RING_API_ISCPOINTER(1))
-	{
-		RING_API_ERROR(RING_API_NOTPOINTER);
-		return;
-	}
-
-	struct archive *a = (struct archive *)RING_API_GETCPOINTER(1, "archive_write");
-	if (!a)
-	{
-		RING_API_ERROR(RING_API_NULLPOINTER);
-		return;
-	}
-
-	int result = archive_write_free(a);
-	RING_API_SETNULLPOINTER(1);
 	RING_API_RETNUMBER((double)result);
 }
 
@@ -1254,32 +1292,6 @@ RING_FUNC(ring_archive_entry_clone)
 		return;
 	}
 	RING_API_RETMANAGEDCPOINTER(clone, "archive_entry", free_archive_entry);
-}
-
-/*
- * archive_entry_free(pEntry)
- *
- * Free an archive entry.
- */
-RING_FUNC(ring_archive_entry_free)
-{
-	if (RING_API_PARACOUNT != 1)
-	{
-		RING_API_ERROR(RING_API_MISS1PARA);
-		return;
-	}
-	if (!RING_API_ISCPOINTER(1))
-	{
-		RING_API_ERROR(RING_API_NOTPOINTER);
-		return;
-	}
-
-	struct archive_entry *entry = (struct archive_entry *)RING_API_GETCPOINTER(1, "archive_entry");
-	if (entry)
-	{
-		archive_entry_free(entry);
-		RING_API_SETNULLPOINTER(1);
-	}
 }
 
 /*
@@ -1790,8 +1802,15 @@ RING_FUNC(ring_archive_error_string)
 		return;
 	}
 
-	struct archive *a = (struct archive *)RING_API_GETCPOINTER(1, "archive_read");
-	if (!a)
+	/* Works for both read and write archives - check type first */
+	List *pList = RING_API_GETLIST(1);
+	const char *ptype = ring_list_getstring(pList, RING_CPOINTER_TYPE);
+	struct archive *a = NULL;
+	if (strcmp(ptype, "archive_read") == 0)
+	{
+		a = (struct archive *)RING_API_GETCPOINTER(1, "archive_read");
+	}
+	else if (strcmp(ptype, "archive_write") == 0)
 	{
 		a = (struct archive *)RING_API_GETCPOINTER(1, "archive_write");
 	}
@@ -1801,7 +1820,10 @@ RING_FUNC(ring_archive_error_string)
 	}
 
 	const char *err = archive_error_string(a);
-	RING_API_RETSTRING(err);
+	if (err)
+	{
+		RING_API_RETSTRING(err);
+	}
 }
 
 /*
@@ -1822,8 +1844,14 @@ RING_FUNC(ring_archive_errno)
 		return;
 	}
 
-	struct archive *a = (struct archive *)RING_API_GETCPOINTER(1, "archive_read");
-	if (!a)
+	List *pList = RING_API_GETLIST(1);
+	const char *ptype = ring_list_getstring(pList, RING_CPOINTER_TYPE);
+	struct archive *a = NULL;
+	if (strcmp(ptype, "archive_read") == 0)
+	{
+		a = (struct archive *)RING_API_GETCPOINTER(1, "archive_read");
+	}
+	else if (strcmp(ptype, "archive_write") == 0)
 	{
 		a = (struct archive *)RING_API_GETCPOINTER(1, "archive_write");
 	}
@@ -1864,8 +1892,14 @@ RING_FUNC(ring_archive_format_name)
 		return;
 	}
 
-	struct archive *a = (struct archive *)RING_API_GETCPOINTER(1, "archive_read");
-	if (!a)
+	List *pList = RING_API_GETLIST(1);
+	const char *ptype = ring_list_getstring(pList, RING_CPOINTER_TYPE);
+	struct archive *a = NULL;
+	if (strcmp(ptype, "archive_read") == 0)
+	{
+		a = (struct archive *)RING_API_GETCPOINTER(1, "archive_read");
+	}
+	else if (strcmp(ptype, "archive_write") == 0)
 	{
 		a = (struct archive *)RING_API_GETCPOINTER(1, "archive_write");
 	}
@@ -1875,7 +1909,10 @@ RING_FUNC(ring_archive_format_name)
 	}
 
 	const char *name = archive_format_name(a);
-	RING_API_RETSTRING(name);
+	if (name)
+	{
+		RING_API_RETSTRING(name);
+	}
 }
 
 /*
@@ -1901,8 +1938,14 @@ RING_FUNC(ring_archive_filter_name)
 		return;
 	}
 
-	struct archive *a = (struct archive *)RING_API_GETCPOINTER(1, "archive_read");
-	if (!a)
+	List *pList = RING_API_GETLIST(1);
+	const char *ptype = ring_list_getstring(pList, RING_CPOINTER_TYPE);
+	struct archive *a = NULL;
+	if (strcmp(ptype, "archive_read") == 0)
+	{
+		a = (struct archive *)RING_API_GETCPOINTER(1, "archive_read");
+	}
+	else if (strcmp(ptype, "archive_write") == 0)
 	{
 		a = (struct archive *)RING_API_GETCPOINTER(1, "archive_write");
 	}
@@ -1912,7 +1955,10 @@ RING_FUNC(ring_archive_filter_name)
 	}
 
 	const char *name = archive_filter_name(a, (int)RING_API_GETNUMBER(2));
-	RING_API_RETSTRING(name);
+	if (name)
+	{
+		RING_API_RETSTRING(name);
+	}
 }
 
 /* ============================================================================
@@ -1944,7 +1990,7 @@ RING_FUNC(ring_archive_extract)
 	struct archive *a = archive_read_new();
 	struct archive *ext = archive_write_disk_new();
 	struct archive_entry *entry;
-	int flags = ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_PERM;
+	int flags = ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_SECURE_NODOTDOT;
 	int result = ARCHIVE_OK;
 
 	archive_read_support_filter_all(a);
@@ -1961,9 +2007,16 @@ RING_FUNC(ring_archive_extract)
 
 	VM *pVM = (VM *)pPointer;
 	size_t dest_len = strlen(dest_path);
+	int is_zip = 0;
 
 	while ((result = archive_read_next_header(a, &entry)) == ARCHIVE_OK)
 	{
+		/* Check format on first entry */
+		if (!is_zip && (archive_format(a) & ARCHIVE_FORMAT_BASE_MASK) == ARCHIVE_FORMAT_ZIP)
+		{
+			is_zip = 1;
+		}
+
 		const char *current_path = archive_entry_pathname(entry);
 
 		/* Construct full path */
@@ -1971,6 +2024,20 @@ RING_FUNC(ring_archive_extract)
 		char *new_path = (char *)ring_state_malloc(pVM->pRingState, new_path_len);
 		snprintf(new_path, new_path_len, "%s/%s", dest_path, current_path);
 		archive_entry_set_pathname(entry, new_path);
+
+		/* Fix permissions for ZIP - it doesn't store Unix perms correctly */
+		if (is_zip)
+		{
+			__LA_MODE_T filetype = archive_entry_filetype(entry);
+			if (filetype == AE_IFDIR)
+			{
+				archive_entry_set_perm(entry, 0755);
+			}
+			else if (filetype == AE_IFREG)
+			{
+				archive_entry_set_perm(entry, 0644);
+			}
+		}
 
 		result = archive_write_header(ext, entry);
 		if (result == ARCHIVE_OK)
@@ -2064,7 +2131,8 @@ RING_FUNC(ring_archive_list)
 /*
  * archive_create(cArchivePath, aFiles, nFormat, nCompression) -> lSuccess
  *
- * Create an archive from list of files.
+ * Create an archive from list of files/directories (recursive).
+ * Uses libarchive's archive_read_disk API for proper handling.
  */
 RING_FUNC(ring_archive_create)
 {
@@ -2085,8 +2153,9 @@ RING_FUNC(ring_archive_create)
 	int compression = (int)RING_API_GETNUMBER(4);
 
 	struct archive *a = archive_write_new();
+	struct archive *disk = archive_read_disk_new();
 	struct archive_entry *entry;
-	VM *pVM = (VM *)pPointer;
+	int r;
 
 	/* Set format */
 	switch (format)
@@ -2135,17 +2204,21 @@ RING_FUNC(ring_archive_create)
 		archive_write_add_filter_none(a);
 	}
 
+	/* Configure disk reader to not cross mount points and handle symlinks */
+	archive_read_disk_set_standard_lookup(disk);
+	archive_read_disk_set_behavior(disk, ARCHIVE_READDISK_NO_TRAVERSE_MOUNTS);
+
 	if (archive_write_open_filename(a, archive_path) != ARCHIVE_OK)
 	{
+		archive_read_free(disk);
 		archive_write_free(a);
 		RING_API_RETNUMBER(0);
 		return;
 	}
 
-	entry = archive_entry_new();
 	int success = 1;
-
 	int nSize = ring_list_getsize(pFilesList);
+
 	for (int i = 1; i <= nSize; i++)
 	{
 		if (!ring_list_isstring(pFilesList, i))
@@ -2153,35 +2226,61 @@ RING_FUNC(ring_archive_create)
 
 		const char *filepath = ring_list_getstring(pFilesList, i);
 
-		FILE *f = fopen(filepath, "rb");
-		if (!f)
+		r = archive_read_disk_open(disk, filepath);
+		if (r != ARCHIVE_OK)
 			continue;
 
-		/* Get file size */
-		fseek(f, 0, SEEK_END);
-		long fsize = ftell(f);
-		fseek(f, 0, SEEK_SET);
-
-		archive_entry_clear(entry);
-		archive_entry_set_pathname(entry, filepath);
-		archive_entry_set_size(entry, fsize);
-		archive_entry_set_filetype(entry, AE_IFREG);
-		archive_entry_set_perm(entry, 0644);
-
-		archive_write_header(a, entry);
-
-		/* Read and write file data */
-		char buffer[8192];
-		size_t bytes_read;
-		while ((bytes_read = fread(buffer, 1, sizeof(buffer), f)) > 0)
+		for (;;)
 		{
-			archive_write_data(a, buffer, bytes_read);
+			entry = archive_entry_new();
+			r = archive_read_next_header2(disk, entry);
+
+			if (r == ARCHIVE_EOF)
+			{
+				archive_entry_free(entry);
+				break;
+			}
+
+			if (r != ARCHIVE_OK)
+			{
+				archive_entry_free(entry);
+				break;
+			}
+
+			/* Let libarchive read file metadata from disk */
+			archive_read_disk_descend(disk);
+
+			/* Write header */
+			r = archive_write_header(a, entry);
+			if (r < ARCHIVE_OK)
+			{
+				archive_entry_free(entry);
+				continue;
+			}
+
+			/* Write file data if it's a regular file with content */
+			if (archive_entry_size(entry) > 0)
+			{
+				int fd = open(archive_entry_sourcepath(entry), O_RDONLY);
+				if (fd >= 0)
+				{
+					char buff[8192];
+					ssize_t len;
+					while ((len = read(fd, buff, sizeof(buff))) > 0)
+					{
+						archive_write_data(a, buff, len);
+					}
+					close(fd);
+				}
+			}
+
+			archive_entry_free(entry);
 		}
 
-		fclose(f);
+		archive_read_close(disk);
 	}
 
-	archive_entry_free(entry);
+	archive_read_free(disk);
 	archive_write_close(a);
 	archive_write_free(a);
 
@@ -2405,7 +2504,6 @@ RING_LIBINIT
 	RING_API_REGISTER("archive_read_data_block", ring_archive_read_data_block);
 	RING_API_REGISTER("archive_read_data_skip", ring_archive_read_data_skip);
 	RING_API_REGISTER("archive_read_close", ring_archive_read_close);
-	RING_API_REGISTER("archive_read_free", ring_archive_read_free);
 
 	/* Archive Writing */
 	RING_API_REGISTER("archive_write_new", ring_archive_write_new);
@@ -2422,11 +2520,12 @@ RING_LIBINIT
 	RING_API_REGISTER("archive_write_add_filter_none", ring_archive_write_add_filter_none);
 	RING_API_REGISTER("archive_write_open_filename", ring_archive_write_open_filename);
 	RING_API_REGISTER("archive_write_open_memory", ring_archive_write_open_memory);
+	RING_API_REGISTER("archive_memory_get_data", ring_archive_memory_get_data);
+	RING_API_REGISTER("archive_memory_free", ring_archive_memory_free);
 	RING_API_REGISTER("archive_write_header", ring_archive_write_header);
 	RING_API_REGISTER("archive_write_data", ring_archive_write_data);
 	RING_API_REGISTER("archive_write_finish_entry", ring_archive_write_finish_entry);
 	RING_API_REGISTER("archive_write_close", ring_archive_write_close);
-	RING_API_REGISTER("archive_write_free", ring_archive_write_free);
 	RING_API_REGISTER("archive_write_set_passphrase", ring_archive_write_set_passphrase);
 	RING_API_REGISTER("archive_write_set_options", ring_archive_write_set_options);
 
@@ -2434,7 +2533,6 @@ RING_LIBINIT
 	RING_API_REGISTER("archive_entry_new", ring_archive_entry_new);
 	RING_API_REGISTER("archive_entry_clear", ring_archive_entry_clear);
 	RING_API_REGISTER("archive_entry_clone", ring_archive_entry_clone);
-	RING_API_REGISTER("archive_entry_free", ring_archive_entry_free);
 	RING_API_REGISTER("archive_entry_pathname", ring_archive_entry_pathname);
 	RING_API_REGISTER("archive_entry_set_pathname", ring_archive_entry_set_pathname);
 	RING_API_REGISTER("archive_entry_size", ring_archive_entry_size);

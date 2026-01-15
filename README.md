@@ -98,7 +98,6 @@ while reader.nextEntry()
 end
 
 reader.close()
-reader.free()
 ```
 
 ### OOP Interface - Writing
@@ -112,7 +111,6 @@ writer.addFile("hello.txt", "Hello World!")
 writer.addFile("data.json", '{"key": "value"}')
 writer.addDirectory("subdir/")
 writer.close()
-writer.free()
 ```
 
 ### 🔐 Encrypted ZIP Archives
@@ -127,7 +125,6 @@ writer.setEncryption(ARCHIVE_ENCRYPTION_AES256)  # or AES128, ZIPCRYPT
 writer.open("secure.zip")
 writer.addFile("secret.txt", "Confidential data")
 writer.close()
-writer.free()
 
 # Reading encrypted archive
 reader = new ArchiveReader(NULL)
@@ -137,7 +134,6 @@ while reader.nextEntry()
     ? reader.entryPath() + ": " + reader.readAll()
 end
 reader.close()
-reader.free()
 ```
 
 ### Archive Helper Class
@@ -222,7 +218,6 @@ reader.readData(nSize)              # Read n bytes
 reader.readDataBlock()              # Read data block (returns [data, offset, size])
 reader.skipData()                   # Skip current entry
 reader.close()                      # Close archive
-reader.free()                       # Free resources
 reader.errorString()                # Get error message
 reader.errno()                      # Get error number
 reader.formatName()                 # Get format name
@@ -245,7 +240,6 @@ writer.addDirectory(cPath)          # Add directory
 writer.addSymlink(cPath, cTarget)   # Add symlink
 writer.addFileFromDisk(cArchPath, cDiskPath) # Add file from disk
 writer.close()                      # Close archive
-writer.free()                       # Free resources
 writer.errorString()                # Get error message
 writer.errno()                      # Get error number
 writer.filterName()                 # Get filter/compression name
@@ -273,7 +267,6 @@ entry.isSymlink()                   # Check if symlink
 entry.clone()                       # Clone entry
 entry.clear()                       # Clear for reuse
 entry.handle()                      # Get raw entry pointer
-entry.free()                        # Free resources
 ```
 
 ## 📂 Examples

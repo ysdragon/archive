@@ -84,12 +84,6 @@ class ArchiveReader
 			archive_read_close(pHandle)
 		ok
 
-	func free
-		if not isNull(pHandle)
-			archive_read_free(pHandle)
-			pHandle = NULL
-		ok
-
 	func errorString
 		if not isNull(pHandle)
 			return archive_error_string(pHandle)
@@ -219,16 +213,6 @@ class ArchiveWriter
 			archive_write_close(pHandle)
 		ok
 
-	func free
-		if not isNull(pEntry)
-			archive_entry_free(pEntry)
-			pEntry = NULL
-		ok
-		if not isNull(pHandle)
-			archive_write_free(pHandle)
-			pHandle = NULL
-		ok
-
 	func errorString
 		if not isNull(pHandle)
 			return archive_error_string(pHandle)
@@ -288,9 +272,6 @@ class ArchiveEntry
 		lOwned = true
 
 	func wrap pExisting
-		if not isNull(pEntry) and lOwned
-			archive_entry_free(pEntry)
-		ok
 		pEntry = pExisting
 		lOwned = false
 		return self
@@ -401,9 +382,3 @@ class ArchiveEntry
 
 	func handle
 		return pEntry
-
-	func free
-		if not isNull(pEntry) and lOwned
-			archive_entry_free(pEntry)
-			pEntry = NULL
-		ok
