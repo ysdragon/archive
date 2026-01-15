@@ -23,6 +23,7 @@
 #define read _read
 #define close _close
 #define O_RDONLY _O_RDONLY
+typedef int ssize_t;
 #else
 #include <unistd.h>
 #endif
