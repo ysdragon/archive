@@ -3,43 +3,74 @@
  * Tests all functionality of the Ring Archive library
  */
 
+load "stdlibcore.ring"
+
+arch = getarch()
+osDir = ""
+archDir = ""
+libName = ""
+libVariant = ""
+
 if isWindows()
-	if getarch() = "x64"
-		loadlib("../lib/windows/amd64/ring_archive.dll")
-	elseif getarch() = "arm64"
-		loadlib("../lib/windows/arm64/ring_archive.dll")
-	elseif getarch() = "x86"
-		loadlib("../lib/windows/i386/ring_archive.dll")
+	osDir = "windows"
+	libName = "ring_archive.dll"
+	if arch = "x64"
+		archDir = "amd64"
+	but arch = "arm64"
+		archDir = "arm64"
+	but arch = "x86"
+		archDir = "i386"
+	else
+		raise("Unsupported Windows architecture: " + arch)
 	ok
-elseif isLinux()
-	if getarch() = "x64"
-		loadlib("../lib/linux/amd64/libring_archive.so")
-	elseif getarch() = "arm64"
-		loadlib("../lib/linux/arm64/libring_archive.so")
+but isLinux()
+	osDir = "linux"
+	libName = "libring_archive.so"
+	if arch = "x64"
+		archDir = "amd64"
+	but arch = "arm64"
+		archDir = "arm64"
+	else
+		raise("Unsupported Linux architecture: " + arch)
 	ok
-elseif isFreeBSD()
-	if getarch() = "x64"
-		loadlib("../lib/freebsd/amd64/libring_archive.so")
-	elseif getarch() = "arm64"
-		loadlib("../lib/freebsd/arm64/libring_archive.so")
+	if isMusl()
+		libVariant = "musl/"
 	ok
-elseif isMacOSX()
-	if getarch() = "x64"
-		loadlib("../lib/macos/amd64/libring_archive.dylib")
-	elseif getarch() = "arm64"
-		loadlib("../lib/macos/arm64/libring_archive.dylib")
+but isFreeBSD()
+	osDir = "freebsd"
+	libName = "libring_archive.so"
+	if arch = "x64"
+		archDir = "amd64"
+	but arch = "arm64"
+		archDir = "arm64"
+	else
+		raise("Unsupported FreeBSD architecture: " + arch)
+	ok
+but isMacOSX()
+	osDir = "macos"
+	libName = "libring_archive.dylib"
+	if arch = "x64"
+		archDir = "amd64"
+	but arch = "arm64"
+		archDir = "arm64"
+	else
+		raise("Unsupported macOS architecture: " + arch)
 	ok
 else
 	raise("Unsupported OS! You need to build the library for your OS.")
 ok
 
-load "stdlibcore.ring"
+loadlib("../lib/" + osDir + "/" + libVariant + archDir + "/" + libName)
+
 load "../src/archive.ring"
 load "../src/archive.rh"
 
 func main
-	oTester = new ArchiveTest()
-	oTester.runAllTests()
+	new ArchiveTest()
+
+func isMusl
+	cOutput = systemCmd("sh -c 'ldd 2>&1'")
+	return substr(cOutput, "musl") > 0
 
 class ArchiveTest
 
@@ -53,6 +84,7 @@ class ArchiveTest
 		? "Setting up test environment..."
 		setupTestData()
 		? "Test environment ready." + nl
+		runAllTests()
 
 	func setupTestData
 		# Create test directory structure
