@@ -94,6 +94,6 @@ jobs:
         ref: master
 
     - name: Run tests
-      uses: ysdragon/ring-action@v1.3.3
+      uses: ysdragon/ring-action@v1.3.4
       with:
         file: "tests/Archive_test.ring"
